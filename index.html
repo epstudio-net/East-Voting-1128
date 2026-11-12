@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>東區1128選情統計與投開票所進度看板</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0b0f19',
+                        darkcard: '#131a29',
+                        darksub: '#0f1422',
+                        darkborder: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js with fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 dark:bg-darkbg dark:text-slate-100 min-h-screen transition-colors duration-200 flex flex-col selection:bg-sky-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-30 bg-white/95 dark:bg-[#111726]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3.5 pb-0">
+            <!-- Top Row: Title & Actions -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-3.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+                        <i class="fa-solid fa-square-poll-vertical text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base sm:text-lg leading-tight tracking-wide text-slate-900 dark:text-white">東區1128選情統計與投開票所進度看板</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <span id="liveStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-medium">即時連線中</span>
+                            <span id="lastUpdatedText" class="ml-1">載入中...</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right Actions: Refresh & Theme Toggle -->
+                <div class="flex items-center gap-2">
+                    <button onclick="fetchData(true)" id="refreshBtn" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium flex items-center gap-2 transition-all active:scale-95">
+                        <i class="fa-solid fa-rotate" id="refreshIcon"></i>
+                        <span>重新整理</span>
+                    </button>
+                    <button onclick="toggleDarkMode()" id="themeToggleBtn" title="切換深淺色主題" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition-all active:scale-95">
+                        <i class="fa-solid fa-sun text-amber-400 hidden dark:inline text-base"></i>
+                        <i class="fa-solid fa-moon text-indigo-600 dark:hidden text-base"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Underline Navigation Tabs -->
+            <nav class="flex items-center gap-6 overflow-x-auto no-scrollbar text-sm font-semibold">
+                <button id="tabOverviewBtn" onclick="switchTab('overview')" class="pb-3 border-b-2 border-sky-500 text-sky-600 dark:text-sky-400 flex items-center gap-2 whitespace-nowrap transition-colors">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>全區綜合看板</span>
+                </button>
+                <button id="tabSingleBtn" onclick="switchTab('single')" class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap transition-colors">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>單一投開票所查詢</span>
+                </button>
+                <button id="tabListBtn" onclick="switchTab('list')" class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap transition-colors">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>全部開票所總覽表</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- Error Alert Banner -->
+        <div id="errorBanner" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 p-4 rounded-2xl flex items-center justify-between gap-3 text-sm">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                <span id="errorMessage">無法載入最新試算表資料，請確認網路連線或試算表發布設定。</span>
+            </div>
+            <button onclick="fetchData(true)" class="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 font-semibold transition-colors">重試</button>
+        </div>
+
+        <!-- ==================== TAB 1: 全區綜合看板 ==================== -->
+        <section id="viewOverview" class="space-y-7">
+            
+            <!-- Top 4 Station Progress Summary Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Card 1: Setup -->
+                <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm flex flex-col justify-between transition-colors">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">投開票所佈置</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-500 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-border-all"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between mb-3">
+                        <span id="summarySetupCount" class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">-- / --</span>
+                        <span id="summarySetupRate" class="text-xs sm:text-sm font-bold text-emerald-500">--%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="summarySetupBar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Staff -->
+                <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm flex flex-col justify-between transition-colors">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">工作人員就位</span>
+                        <div class="w-8 h-8 rounded-lg bg-sky-500/15 text-sky-500 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-users-gear"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between mb-3">
+                        <span id="summaryStaffCount" class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">-- / --</span>
+                        <span id="summaryStaffRate" class="text-xs sm:text-sm font-bold text-sky-500">--%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="summaryStaffBar" class="h-full bg-sky-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Voting Start -->
+                <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm flex flex-col justify-between transition-colors">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">開始投票狀態</span>
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-box-archive"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between mb-3">
+                        <span id="summaryStartCount" class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">-- / --</span>
+                        <span id="summaryStartRate" class="text-xs sm:text-sm font-bold text-amber-500">--%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="summaryStartBar" class="h-full bg-amber-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Counting -->
+                <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm flex flex-col justify-between transition-colors">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">開票進行中</span>
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-500 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-square-check"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between mb-3">
+                        <span id="summaryCountTimeCount" class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">-- / --</span>
+                        <span id="summaryCountTimeRate" class="text-xs sm:text-sm font-bold text-purple-500">--%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="summaryCountTimeBar" class="h-full bg-purple-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Title: 6 Categories Summary -->
+            <div>
+                <h2 class="text-base sm:text-lg font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <i class="fa-solid fa-chart-simple text-sky-500"></i>
+                    <span>六大投票項目綜合投票率 (總統計)</span>
+                </h2>
+                
+                <!-- 6 Category Cards Grid -->
+                <div id="categoryCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div class="col-span-full text-center py-12 text-slate-400">資料讀取中...</div>
+                </div>
+            </div>
+
+            <!-- Overview Chart Card -->
+            <div class="bg-white dark:bg-darkcard p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm transition-colors">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-indigo-500"></i>
+                            <span>各階段綜合投票率比較圖表</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">顯示全區綜合統計第一、二、三階段投票率走勢</p>
+                    </div>
+                </div>
+                <div class="relative w-full h-64 sm:h-72">
+                    <canvas id="overviewChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== TAB 2: 單一投開票所查詢 ==================== -->
+        <section id="viewSingle" class="hidden space-y-6">
+            
+            <!-- Top Search & Navigation Bar -->
+            <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm transition-colors">
+                <label class="block text-xs text-slate-500 dark:text-slate-400 mb-2 font-medium">選擇或搜尋投開票所編號 (1280 - 1409)</label>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <!-- Selector & Input Wrapper -->
+                    <div class="relative flex-grow flex items-center gap-2">
+                        <div class="relative flex-grow">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">#</span>
+                            <select id="stationSelectDropdown" onchange="onStationSelectChange(this.value)" class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-darksub border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                                <!-- Options populated by JS -->
+                            </select>
+                        </div>
+                        <div class="relative w-28 sm:w-36">
+                            <input type="number" id="stationSearchInput" min="1280" max="1409" placeholder="輸入號碼" onkeydown="if(event.key==='Enter') searchStation()" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-darksub border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <button onclick="searchStation()" class="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-all active:scale-95 whitespace-nowrap">
+                            查詢
+                        </button>
+                    </div>
+
+                    <!-- Prev / Next Buttons -->
+                    <div class="flex items-center gap-2 justify-end">
+                        <button onclick="navigateStation(-1)" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all active:scale-95">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>上一個</span>
+                        </button>
+                        <button onclick="navigateStation(1)" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium flex items-center justify-center gap-1.5 transition-all active:scale-95">
+                            <span>下一個</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Single Station Result Area -->
+            <div id="singleResultContainer" class="space-y-6">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+
+        <!-- ==================== TAB 3: 全部開票所總覽表 ==================== -->
+        <section id="viewList" class="hidden space-y-5">
+            
+            <!-- Filter Bar -->
+            <div class="bg-white dark:bg-darkcard p-4 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 transition-colors">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-grow">
+                    <div class="relative sm:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="listSearchInput" oninput="renderTableList()" placeholder="搜尋編號或狀態..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-darksub border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    </div>
+                    <select id="statusFilterSelect" onchange="renderTableList()" class="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-darksub border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+                        <option value="ALL">全部狀態篩選</option>
+                        <option value="SETUP_DONE">投開票所已完成佈置</option>
+                        <option value="STAFF_READY">工作人員已就位</option>
+                        <option value="VOTING">已開始投票</option>
+                        <option value="COUNTING">已開始開票</option>
+                        <option value="PENDING">尚有未完成項目</option>
+                    </select>
+                </div>
+                <div class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 text-center whitespace-nowrap">
+                    共 <span id="filteredCountText" class="text-sky-600 dark:text-sky-400 font-bold">0</span> 筆投開票所
+                </div>
+            </div>
+
+            <!-- Stations Table -->
+            <div class="bg-white dark:bg-darkcard rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm overflow-hidden transition-colors">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-[#172033] text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                <th class="py-3.5 px-4 font-bold whitespace-nowrap">投開票所編號</th>
+                                <th class="py-3.5 px-3 font-bold text-center whitespace-nowrap">投開票所佈置</th>
+                                <th class="py-3.5 px-3 font-bold text-center whitespace-nowrap">工作人員就位</th>
+                                <th class="py-3.5 px-3 font-bold text-center whitespace-nowrap">開始投票</th>
+                                <th class="py-3.5 px-3 font-bold text-center whitespace-nowrap">開票時間</th>
+                                <th class="py-3.5 px-3 font-bold text-right whitespace-nowrap">市長總票數</th>
+                                <th class="py-3.5 px-3 font-bold text-right whitespace-nowrap">市長投票率(三階)</th>
+                                <th class="py-3.5 px-4 font-bold text-center whitespace-nowrap">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stationTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] py-4 text-center text-xs text-slate-500 transition-colors">
+        <p>東區1128選情統計與投開票所進度看板 &copy; 投票資料連線回報系統</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Published Google Sheet CSV Link
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSk6V7MGfHDqnbIOLKtQGaeOP80Wu9Ep1Cj6rAJgX2TjXd1fY530otPMlMLt2J0lpqyi_P-coC6fRu5/pub?gid=0&single=true&output=csv';
+
+        // App State
+        let parsedStations = [];
+        let summaryRow = null;
+        let selectedStationNum = '1280';
+        let overviewChartInstance = null;
+        let autoRefreshTimer = null;
+
+        // 6 Voting Categories & Column Offset Definition (7 columns each)
+        // [TotalVoters, P1_Issued, P1_Rate, P2_Issued, P2_Rate, P3_Issued, P3_Rate]
+        const CATEGORIES = [
+            { key: 'mayor', name: '市長', startIndex: 1, icon: 'fa-user-tie', gradient: 'from-sky-400 to-blue-600', chartColor: '#0ea5e9' },
+            { key: 'councilor', name: '議員', startIndex: 8, icon: 'fa-users', gradient: 'from-indigo-400 to-purple-600', chartColor: '#6366f1' },
+            { key: 'indigenousPlain', name: '平地原住民議員', startIndex: 15, icon: 'fa-tree', gradient: 'from-emerald-400 to-teal-600', chartColor: '#10b981' },
+            { key: 'indigenousMountain', name: '山地原住民議員', startIndex: 22, icon: 'fa-mountain', gradient: 'from-amber-400 to-orange-600', chartColor: '#f59e0b' },
+            { key: 'chief', name: '里長', startIndex: 29, icon: 'fa-house-user', gradient: 'from-pink-400 to-rose-600', chartColor: '#ec4899' },
+            { key: 'referendum', name: '公投', startIndex: 36, icon: 'fa-file-signature', gradient: 'from-violet-400 to-fuchsia-600', chartColor: '#8b5cf6' }
+        ];
+
+        // Last 4 columns: Progress Status
+        const PROGRESS_OFFSETS = {
+            setup: 43,        // 投開票所佈置
+            staff: 44,        // 工作人員就位
+            votingStart: 45,  // 開始投票
+            countingTime: 46  // 開票時間
+        };
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            fetchData(true);
+            autoRefreshTimer = setInterval(() => fetchData(false), 60000);
+        });
+
+        // Theme Management
+        function initTheme() {
+            const savedTheme = localStorage.getItem('voting_dashboard_theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        function toggleDarkMode() {
+            const htmlEl = document.documentElement;
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                localStorage.setItem('voting_dashboard_theme', 'light');
+            } else {
+                htmlEl.classList.add('dark');
+                localStorage.setItem('voting_dashboard_theme', 'dark');
+            }
+            if (overviewChartInstance) {
+                renderOverviewChart();
+            }
+        }
+
+        // Tab Navigation
+        function switchTab(tab) {
+            const views = {
+                overview: document.getElementById('viewOverview'),
+                single: document.getElementById('viewSingle'),
+                list: document.getElementById('viewList')
+            };
+            const btns = {
+                overview: document.getElementById('tabOverviewBtn'),
+                single: document.getElementById('tabSingleBtn'),
+                list: document.getElementById('tabListBtn')
+            };
+
+            const activeCls = "pb-3 border-b-2 border-sky-500 text-sky-600 dark:text-sky-400 flex items-center gap-2 whitespace-nowrap transition-colors";
+            const inactiveCls = "pb-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap transition-colors";
+
+            Object.keys(views).forEach(k => {
+                views[k].classList.add('hidden');
+                btns[k].className = inactiveCls;
+            });
+
+            views[tab].classList.remove('hidden');
+            btns[tab].className = activeCls;
+
+            if (tab === 'single') {
+                renderSingleStationView();
+            } else if (tab === 'list') {
+                renderTableList();
+            }
+        }
+
+        // Multi-proxy Resilient CSV Fetcher
+        async function fetchData(showSpin = true) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            const errorBanner = document.getElementById('errorBanner');
+            
+            if (showSpin) refreshIcon?.classList.add('fa-spin');
+            errorBanner.classList.add('hidden');
+
+            const cacheBusterUrl = `${CSV_URL}&t=${Date.now()}`;
+            let csvText = null;
+
+            // 1. Direct Fetch
+            try {
+                const res = await fetch(cacheBusterUrl, { cache: 'no-store' });
+                if (res.ok) {
+                    const txt = await res.text();
+                    if (txt && txt.includes('1280')) csvText = txt;
+                }
+            } catch (e) {}
+
+            // 2. AllOrigins Proxy
+            if (!csvText) {
+                try {
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(cacheBusterUrl)}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.contents && json.contents.includes('1280')) csvText = json.contents;
+                    }
+                } catch (e) {}
+            }
+
+            // 3. CorsProxy.io
+            if (!csvText) {
+                try {
+                    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(cacheBusterUrl)}`);
+                    if (res.ok) {
+                        const txt = await res.text();
+                        if (txt && txt.includes('1280')) csvText = txt;
+                    }
+                } catch (e) {}
+            }
+
+            // 4. CodeTabs Proxy
+            if (!csvText) {
+                try {
+                    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(cacheBusterUrl)}`);
+                    if (res.ok) {
+                        const txt = await res.text();
+                        if (txt && txt.includes('1280')) csvText = txt;
+                    }
+                } catch (e) {}
+            }
+
+            if (csvText) {
+                parseCSV(csvText);
+                const now = new Date();
+                const period = now.getHours() >= 12 ? '下午' : '上午';
+                const h12 = now.getHours() % 12 || 12;
+                const timeStr = `${period}${h12}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+                document.getElementById('lastUpdatedText').innerText = timeStr;
+            } else {
+                errorBanner.classList.remove('hidden');
+            }
+
+            if (showSpin) {
+                setTimeout(() => refreshIcon?.classList.remove('fa-spin'), 450);
+            }
+        }
+
+        // RFC-Compliant CSV Line Splitter (handles commas inside quotes like "147,822")
+        function splitCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        // Number & Rate Parsers
+        function parseIntSafe(val) {
+            if (!val) return 0;
+            const cleaned = String(val).replace(/,/g, '').trim();
+            const num = parseInt(cleaned, 10);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function formatVoteCount(val) {
+            if (val === undefined || val === null || String(val).trim() === '') return '--';
+            const cleaned = String(val).replace(/,/g, '').trim();
+            const num = Number(cleaned);
+            return isNaN(num) ? cleaned : num.toLocaleString();
+        }
+
+        function formatRate(val) {
+            if (val === undefined || val === null || String(val).trim() === '') return '0.0%';
+            let str = String(val).replace(/%/g, '').trim();
+            let num = parseFloat(str);
+            if (isNaN(num)) return '0.0%';
+            return `${num.toFixed(1)}%`;
+        }
+
+        function parseRateNumber(val) {
+            if (!val) return 0;
+            let num = parseFloat(String(val).replace(/%/g, '').trim());
+            return isNaN(num) ? 0 : num;
+        }
+
+        // Parse Entire CSV Text
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+            const stations = [];
+            let foundSummary = null;
+
+            lines.forEach((line, index) => {
+                const cols = splitCSVLine(line);
+                if (cols.length < 10) return;
+
+                const firstCol = cols[0].replace(/\s+/g, '');
+                const numId = parseInt(firstCol, 10);
+
+                // Check if station row (1280 ~ 1409)
+                if (!isNaN(numId) && numId >= 1280 && numId <= 1450) {
+                    stations.push(buildRowObject(String(numId), cols));
+                } else if (
+                    firstCol.includes('綜合') ||
+                    firstCol.includes('合計') ||
+                    firstCol.includes('總計') ||
+                    (index === lines.length - 1 && stations.length > 0 && isNaN(numId))
+                ) {
+                    foundSummary = buildRowObject('綜合統計', cols);
+                }
+            });
+
+            // Fallback: if last row wasn't caught by label, verify if last non-station row has numeric totals
+            if (!foundSummary && lines.length > 0) {
+                const lastCols = splitCSVLine(lines[lines.length - 1]);
+                if (lastCols.length >= 43 && parseIntSafe(lastCols[1]) > 0) {
+                    foundSummary = buildRowObject('綜合統計', lastCols);
+                }
+            }
+
+            parsedStations = stations;
+            summaryRow = foundSummary;
+
+            updateStationDropdown();
+            renderOverview();
+            if (!document.getElementById('viewSingle').classList.contains('hidden')) {
+                renderSingleStationView();
+            }
+            if (!document.getElementById('viewList').classList.contains('hidden')) {
+                renderTableList();
+            }
+        }
+
+        // Build Structured Data Object for a Row
+        function buildRowObject(id, cols) {
+            const categoriesData = {};
+            CATEGORIES.forEach(cat => {
+                const idx = cat.startIndex;
+                categoriesData[cat.key] = {
+                    totalVoters: parseIntSafe(cols[idx]),
+                    p1: {
+                        count: formatVoteCount(cols[idx + 1]),
+                        rate: formatRate(cols[idx + 2]),
+                        rateNum: parseRateNumber(cols[idx + 2])
+                    },
+                    p2: {
+                        count: formatVoteCount(cols[idx + 3]),
+                        rate: formatRate(cols[idx + 4]),
+                        rateNum: parseRateNumber(cols[idx + 4])
+                    },
+                    p3: {
+                        count: formatVoteCount(cols[idx + 5]),
+                        rate: formatRate(cols[idx + 6]),
+                        rateNum: parseRateNumber(cols[idx + 6])
+                    }
+                };
+            });
+
+            const rawSetup = (cols[PROGRESS_OFFSETS.setup] || '').trim();
+            const rawStaff = (cols[PROGRESS_OFFSETS.staff] || '').trim();
+            const rawVoting = (cols[PROGRESS_OFFSETS.votingStart] || '').trim();
+            const rawCounting = (cols[PROGRESS_OFFSETS.countingTime] || '').trim();
+
+            return {
+                id: id,
+                categories: categoriesData,
+                progress: {
+                    setup: rawSetup !== '' ? rawSetup : '未完成',
+                    isSetupDone: rawSetup !== '',
+                    staff: rawStaff !== '' ? rawStaff : '未就位',
+                    isStaffReady: rawStaff !== '',
+                    votingStart: rawVoting !== '' ? rawVoting : '尚未開始',
+                    isVotingStarted: rawVoting !== '',
+                    countingTime: rawCounting !== '' ? rawCounting : '尚未開始',
+                    isCountingStarted: rawCounting !== ''
+                }
+            };
+        }
+
+        // Render Overview Dashboard (Tab 1)
+        function renderOverview() {
+            const totalStations = parsedStations.length || 130;
+            const setupDoneCount = parsedStations.filter(s => s.progress.isSetupDone).length;
+            const staffReadyCount = parsedStations.filter(s => s.progress.isStaffReady).length;
+            const votingStartCount = parsedStations.filter(s => s.progress.isVotingStarted).length;
+            const countingStartCount = parsedStations.filter(s => s.progress.isCountingStarted).length;
+
+            const setupPct = Math.round((setupDoneCount / totalStations) * 100) || 0;
+            const staffPct = Math.round((staffReadyCount / totalStations) * 100) || 0;
+            const startPct = Math.round((votingStartCount / totalStations) * 100) || 0;
+            const countPct = Math.round((countingStartCount / totalStations) * 100) || 0;
+
+            document.getElementById('summarySetupCount').innerText = `${setupDoneCount} / ${totalStations}`;
+            document.getElementById('summarySetupRate').innerText = `${setupPct}%`;
+            document.getElementById('summarySetupBar').style.width = `${setupPct}%`;
+
+            document.getElementById('summaryStaffCount').innerText = `${staffReadyCount} / ${totalStations}`;
+            document.getElementById('summaryStaffRate').innerText = `${staffPct}%`;
+            document.getElementById('summaryStaffBar').style.width = `${staffPct}%`;
+
+            document.getElementById('summaryStartCount').innerText = `${votingStartCount} / ${totalStations}`;
+            document.getElementById('summaryStartRate').innerText = `${startPct}%`;
+            document.getElementById('summaryStartBar').style.width = `${startPct}%`;
+
+            document.getElementById('summaryCountTimeCount').innerText = `${countingStartCount} / ${totalStations}`;
+            document.getElementById('summaryCountTimeRate').innerText = `${countPct}%`;
+            document.getElementById('summaryCountTimeBar').style.width = `${countPct}%`;
+
+            // Render 6 Category Cards from summaryRow
+            const grid = document.getElementById('categoryCardsGrid');
+            if (!summaryRow) {
+                grid.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400">尚未讀取到綜合統計列數據</div>`;
+                return;
+            }
+
+            grid.innerHTML = CATEGORIES.map(cat => {
+                const d = summaryRow.categories[cat.key];
+                return `
+                    <div class="bg-white dark:bg-darkcard p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm flex flex-col justify-between space-y-4 transition-colors">
+                        <!-- Card Header -->
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${cat.gradient} flex items-center justify-center text-white text-base shadow-sm">
+                                    <i class="fa-solid ${cat.icon}"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-base text-slate-900 dark:text-white leading-tight">${cat.name}</h3>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">總票數 (選舉人數): ${d.totalVoters.toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-semibold">綜合統計</span>
+                        </div>
+
+                        <!-- Phase 3 Highlight Box -->
+                        <div class="bg-slate-50 dark:bg-darksub p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 space-y-1.5">
+                            <div class="flex items-baseline justify-between">
+                                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">第三階段 (最新投票率)</span>
+                                <span class="text-2xl font-black text-sky-600 dark:text-sky-400">${d.p3.rate}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-400 dark:text-slate-500">領票數</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-200">${d.p3.count} 票</span>
+                            </div>
+                        </div>
+
+                        <!-- Phase 1 & Phase 2 Sub-boxes -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-50 dark:bg-darksub p-3 rounded-xl border border-slate-200/70 dark:border-slate-800/80">
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">第一階段領票</span>
+                                <div class="text-base font-extrabold text-slate-900 dark:text-white">${d.p1.rate}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${d.p1.count} 票</div>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-darksub p-3 rounded-xl border border-slate-200/70 dark:border-slate-800/80">
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">第二階段領票</span>
+                                <div class="text-base font-extrabold text-slate-900 dark:text-white">${d.p2.rate}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${d.p2.count} 票</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderOverviewChart();
+        }
+
+        // Render Chart.js Bar Chart
+        function renderOverviewChart() {
+            if (!summaryRow) return;
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js is not loaded yet, retrying...');
+                setTimeout(renderOverviewChart, 500);
+                return;
+            }
+            const canvas = document.getElementById('overviewChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#475569';
+            const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)';
+
+            const labels = CATEGORIES.map(c => c.name);
+            const p1Data = CATEGORIES.map(c => summaryRow.categories[c.key].p1.rateNum);
+            const p2Data = CATEGORIES.map(c => summaryRow.categories[c.key].p2.rateNum);
+            const p3Data = CATEGORIES.map(c => summaryRow.categories[c.key].p3.rateNum);
+
+            if (overviewChartInstance) {
+                overviewChartInstance.destroy();
+            }
+
+            overviewChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '第一階段投票率 (%)',
+                            data: p1Data,
+                            backgroundColor: '#38bdf8',
+                            borderRadius: 6
+                        },
+                        {
+                            label: '第二階段投票率 (%)',
+                            data: p2Data,
+                            backgroundColor: '#818cf8',
+                            borderRadius: 6
+                        },
+                        {
+                            label: '第三階段投票率 (%)',
+                            data: p3Data,
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: textColor, font: { family: 'Noto Sans TC', size: 12 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: textColor, font: { family: 'Noto Sans TC' } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: textColor,
+                                callback: value => value + '%'
+                            },
+                            grid: { color: gridColor }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Station Dropdown Population & Navigation
+        function updateStationDropdown() {
+            const dropdown = document.getElementById('stationSelectDropdown');
+            if (!dropdown) return;
+            const currentVal = selectedStationNum;
+            dropdown.innerHTML = parsedStations.map(st => 
+                `<option value="${st.id}" ${st.id === currentVal ? 'selected' : ''}>第 ${st.id} 投開票所</option>`
+            ).join('');
+        }
+
+        function onStationSelectChange(val) {
+            selectedStationNum = val;
+            document.getElementById('stationSearchInput').value = val;
+            renderSingleStationView();
+        }
+
+        function searchStation() {
+            const inputVal = document.getElementById('stationSearchInput').value.trim();
+            if (!inputVal) return;
+            const found = parsedStations.find(s => s.id === inputVal);
+            if (found) {
+                selectedStationNum = found.id;
+                document.getElementById('stationSelectDropdown').value = found.id;
+                renderSingleStationView();
+            } else {
+                const container = document.getElementById('singleResultContainer');
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-darkcard p-8 rounded-2xl border border-rose-500/30 text-center space-y-2">
+                        <i class="fa-solid fa-circle-exclamation text-3xl text-rose-500"></i>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">查無編號「${inputVal}」的投開票所</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">請輸入有效編號範圍 (1280 ～ 1409)</p>
+                    </div>
+                `;
+            }
+        }
+
+        function navigateStation(offset) {
+            const idx = parsedStations.findIndex(s => s.id === selectedStationNum);
+            if (idx === -1) return;
+            const nextIdx = (idx + offset + parsedStations.length) % parsedStations.length;
+            selectedStationNum = parsedStations[nextIdx].id;
+            document.getElementById('stationSelectDropdown').value = selectedStationNum;
+            document.getElementById('stationSearchInput').value = selectedStationNum;
+            renderSingleStationView();
+        }
+
+        // Render Single Station View (Tab 2)
+        function renderSingleStationView() {
+            const container = document.getElementById('singleResultContainer');
+            const station = parsedStations.find(s => s.id === selectedStationNum) || parsedStations[0];
+
+            if (!station) {
+                container.innerHTML = `<div class="text-center py-12 text-slate-400">尚無投開票所資料</div>`;
+                return;
+            }
+
+            const p = station.progress;
+
+            container.innerHTML = `
+                <!-- Hero Station Banner -->
+                <div class="bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 p-6 sm:p-7 rounded-2xl text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-semibold mb-2.5">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span>投開票所詳情</span>
+                        </span>
+                        <h2 class="text-2xl sm:text-3xl font-black tracking-wide">第 ${station.id} 投開票所</h2>
+                    </div>
+
+                    <!-- Status Pills -->
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm ${p.isSetupDone ? 'bg-emerald-500/30 border border-emerald-300/40 text-white' : 'bg-white/15 text-white/90'}">
+                            佈置：${p.setup}
+                        </span>
+                        <span class="px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm ${p.isStaffReady ? 'bg-emerald-500/30 border border-emerald-300/40 text-white' : 'bg-white/15 text-white/90'}">
+                            人員：${p.staff}
+                        </span>
+                        <span class="px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm ${p.isVotingStarted ? 'bg-emerald-500/30 border border-emerald-300/40 text-white' : 'bg-white/15 text-white/90'}">
+                            投票：${p.votingStart}
+                        </span>
+                        <span class="px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm ${p.isCountingStarted ? 'bg-amber-400/30 border border-amber-200/40 text-white' : 'bg-white/15 text-white/90'}">
+                            開票：${p.countingTime}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 4 Progress Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm transition-colors">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-2.5">1. 投開票所佈置</span>
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl ${p.isSetupDone ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'} flex items-center justify-center">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            </div>
+                            <span class="text-base sm:text-lg font-bold ${p.isSetupDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${p.setup}</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm transition-colors">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-2.5">2. 工作人員就位</span>
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl ${p.isStaffReady ? 'bg-sky-500/15 text-sky-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'} flex items-center justify-center">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <span class="text-base sm:text-lg font-bold ${p.isStaffReady ? 'text-sky-600 dark:text-sky-400' : 'text-slate-500 dark:text-slate-400'}">${p.staff}</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm transition-colors">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-2.5">3. 開始投票</span>
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl ${p.isVotingStarted ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'} flex items-center justify-center">
+                                <i class="fa-solid fa-play"></i>
+                            </div>
+                            <span class="text-base sm:text-lg font-bold ${p.isVotingStarted ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${p.votingStart}</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-darkcard p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm transition-colors">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-2.5">4. 開票時間</span>
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl ${p.isCountingStarted ? 'bg-amber-500/15 text-amber-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'} flex items-center justify-center">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                            <span class="text-base sm:text-lg font-bold ${p.isCountingStarted ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}">${p.countingTime}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6 Category Cards for Selected Station -->
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                        <i class="fa-solid fa-list-ul text-sky-500"></i>
+                        <span>該投開票所各項目各階段數據</span>
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        ${CATEGORIES.map(cat => {
+                            const d = station.categories[cat.key];
+                            // Condition: If indigenousPlain or indigenousMountain totalVoters is 0, show "無選舉人"
+                            const isNoVoters = (cat.key === 'indigenousPlain' || cat.key === 'indigenousMountain') && d.totalVoters === 0;
+                            
+                            return `
+                                <div class="bg-white dark:bg-darkcard p-5 rounded-2xl border border-slate-200 dark:border-darkborder shadow-sm space-y-3.5 flex flex-col justify-between transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${cat.gradient} flex items-center justify-center text-white text-base shadow-sm">
+                                            <i class="fa-solid ${cat.icon}"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-base font-bold text-slate-900 dark:text-white leading-tight">${cat.name}</h4>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">總票數 (選舉人數): ${d.totalVoters.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    ${isNoVoters ? `
+                                        <div class="bg-slate-50 dark:bg-darksub p-6 rounded-xl border border-slate-200/70 dark:border-slate-800/80 flex items-center justify-center flex-grow min-h-[148px]">
+                                            <span class="text-lg font-bold text-slate-400 dark:text-slate-500 tracking-widest">無選舉人</span>
+                                        </div>
+                                    ` : `
+                                        <div class="bg-slate-50 dark:bg-darksub p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 space-y-1">
+                                            <div class="flex items-baseline justify-between">
+                                                <span class="text-xs text-slate-500 dark:text-slate-400">第三階段投票率</span>
+                                                <span class="text-2xl font-black text-sky-600 dark:text-sky-400">${d.p3.rate}</span>
+                                            </div>
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="text-slate-400 dark:text-slate-500">領票數</span>
+                                                <span class="font-semibold text-slate-700 dark:text-slate-300">${d.p3.count} 票</span>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3 text-xs">
+                                            <div class="bg-slate-50 dark:bg-darksub p-3 rounded-xl border border-slate-200/70 dark:border-slate-800/80">
+                                                <span class="text-slate-500 dark:text-slate-400 block mb-1">第一階段</span>
+                                                <div class="text-base font-bold text-slate-900 dark:text-white">${d.p1.rate}</div>
+                                                <div class="text-slate-500 dark:text-slate-400 mt-0.5">${d.p1.count} 票</div>
+                                            </div>
+                                            <div class="bg-slate-50 dark:bg-darksub p-3 rounded-xl border border-slate-200/70 dark:border-slate-800/80">
+                                                <span class="text-slate-500 dark:text-slate-400 block mb-1">第二階段</span>
+                                                <div class="text-base font-bold text-slate-900 dark:text-white">${d.p2.rate}</div>
+                                                <div class="text-slate-500 dark:text-slate-400 mt-0.5">${d.p2.count} 票</div>
+                                            </div>
+                                        </div>
+                                    `}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render All Stations Table (Tab 3)
+        function renderTableList() {
+            const searchQuery = (document.getElementById('listSearchInput')?.value || '').trim().toLowerCase();
+            const statusFilter = document.getElementById('statusFilterSelect')?.value || 'ALL';
+            const tbody = document.getElementById('stationTableBody');
+
+            const filtered = parsedStations.filter(st => {
+                const p = st.progress;
+                // Status Filter
+                if (statusFilter === 'SETUP_DONE' && !p.isSetupDone) return false;
+                if (statusFilter === 'STAFF_READY' && !p.isStaffReady) return false;
+                if (statusFilter === 'VOTING' && !p.isVotingStarted) return false;
+                if (statusFilter === 'COUNTING' && !p.isCountingStarted) return false;
+                if (statusFilter === 'PENDING' && (p.isSetupDone && p.isStaffReady && p.isVotingStarted)) return false;
+
+                // Text Search
+                if (searchQuery) {
+                    const textBlob = `${st.id} ${p.setup} ${p.staff} ${p.votingStart} ${p.countingTime}`.toLowerCase();
+                    if (!textBlob.includes(searchQuery)) return false;
+                }
+                return true;
+            });
+
+            document.getElementById('filteredCountText').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-10 text-center text-slate-400">無符合篩選條件的投開票所資料</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(st => {
+                const p = st.progress;
+                const mayor = st.categories.mayor;
+
+                const badgeHtml = (isDone, text, activeColor = 'emerald') => {
+                    if (!isDone) {
+                        return `<span class="inline-block px-2.5 py-1 rounded-lg text-xs text-slate-500 dark:text-slate-400">${text}</span>`;
+                    }
+                    if (activeColor === 'amber') {
+                        return `<span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">${text}</span>`;
+                    }
+                    return `<span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">${text}</span>`;
+                };
+
+                return `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td class="py-3 px-4 font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">第 ${st.id} 投開票所</td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">${badgeHtml(p.isSetupDone, p.setup)}</td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">${badgeHtml(p.isStaffReady, p.staff)}</td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">${badgeHtml(p.isVotingStarted, p.votingStart)}</td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">${badgeHtml(p.isCountingStarted, p.countingTime, 'amber')}</td>
+                        <td class="py-3 px-3 text-right font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">${mayor.totalVoters.toLocaleString()}</td>
+                        <td class="py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">${mayor.p3.rate}</td>
+                        <td class="py-3 px-4 text-center whitespace-nowrap">
+                            <button onclick="inspectStation('${st.id}')" class="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-600 dark:text-sky-400 text-xs font-semibold transition-colors">
+                                查看詳情
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Jump from Table Row to Single Station Detail View
+        function inspectStation(stationId) {
+            selectedStationNum = stationId;
+            document.getElementById('stationSelectDropdown').value = stationId;
+            document.getElementById('stationSearchInput').value = stationId;
+            switchTab('single');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
